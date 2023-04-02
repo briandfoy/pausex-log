@@ -68,6 +68,8 @@ my %WriteMakefile = (
 		'Carp'         => '0',
 		'Mojolicious'  => '9',
 		'Digest::SHA1' => '0',
+		'String::Sprintf' => '1.002',
+		'Getopt::Long' => '0',
 		},
 
 	'META_MERGE' => {
