@@ -188,8 +188,6 @@ The PAUSE ID of the message, if the message refers to one
 
 (Common) The type of message
 
-=back
-
 =cut
 
 sub type ( $self ) {
