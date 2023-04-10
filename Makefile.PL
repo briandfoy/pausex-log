@@ -52,7 +52,7 @@ my %WriteMakefile = (
 	'LICENSE'       => 'artistic_2',
 	'AUTHOR'        => 'brian d foy <bdfoy@cpan.org>',
 
-	'EXE_FILES' => [ 'script/pause_log' ],
+	'EXE_FILES' => [ 'script/pause-log' ],
 
 	'CONFIGURE_REQUIRES' => {
 		'ExtUtils::MakeMaker'   => '6.64',
