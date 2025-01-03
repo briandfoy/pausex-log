@@ -2,6 +2,20 @@
 
 =encoding utf8
 
+=for HTML <a href="https://www.github.com/briandfoy/pausex-log/actions?query=workflow%3Amacos"><img src="https://www.github.com/briandfoy/pausex-log/workflows/macos/badge.svg"></a>
+
+=for HTML <a href="https://www.github.com/briandfoy/pausex-log/actions?query=workflow%3Aubuntu"><img src="https://www.github.com/briandfoy/pausex-log/workflows/ubuntu/badge.svg"></a>
+
+=for HTML <a href="https://www.github.com/briandfoy/pausex-log/actions?query=workflow%3Awindows"><img src="https://www.github.com/briandfoy/pausex-log/workflows/windows/badge.svg"></a>
+
+=for HTML <a href='https://ci.appveyor.com/project/briandfoy/pausex-log'><img src='https://ci.appveyor.com/api/projects/status/y75sd456nlmr7p4q?svg=true'></a>
+
+=for HTML <a href='https://coveralls.io/github/briandfoy/pausex-log?branch=master'><img src='https://coveralls.io/repos/github/briandfoy/pausex-log/badge.svg?branch=master' alt='Coverage Status' /></a>
+
+=for HTML <a href="https://github.com/briandfoy/pausex-log/blob/master/LICENSE"><img src="https://img.shields.io/cpan/l/PAUSEx-Log.svg" /></a>
+
+=for HTML <a href="https://metacpan.org/pod/PAUSEx::Log"><img src="https://img.shields.io/cpan/v/PAUSEx-Log.svg" /></A>
+
 =head1 The PAUSEx::Log module
 
 This is the I<README> for the L<PAUSEx::Log> Perl module.
