@@ -30,10 +30,10 @@ and if it was queued for indexing.
 
 Filter the messages that aren't for this distname
 
-	--stop-on-dist Foo::Bar         # :: replaced by -
-	--stop-on-dist Foo-Bar          # Matches at start of distname
-	--stop-on-dist Foo-Bar-1.23     # ... same
-	--stop-on-dist Foo-Bar-1.23.tgz # ... same
+	--dist Foo::Bar         # :: replaced by -
+	--dist Foo-Bar          # Matches at start of distname
+	--dist Foo-Bar-1.23     # ... same
+	--dist Foo-Bar-1.23.tgz # ... same
 
 =item * --duration N
 
