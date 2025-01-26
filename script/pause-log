@@ -10,7 +10,7 @@ $SIG{INT} = sub { exit };
 
 =head1 NAME
 
-pause-log -
+pause-log - tail the PAUSE log to watch for messages for your upload
 
 =head1 SYNOPSIS
 
