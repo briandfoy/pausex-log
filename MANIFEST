@@ -6,8 +6,6 @@ LICENSE
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-none/pause-log.1
-none/PAUSEx::Log.3
 README.pod
 script/pause-log
 SECURITY.md
