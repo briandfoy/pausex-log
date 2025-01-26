@@ -18,6 +18,10 @@ pause-log - tail the PAUSE log to watch for messages for your upload
 
 =head1 DESCRIPTION
 
+I wrote this because there was a time when it appeared that my uplaods
+were not uploading. I watched the PAUSE log to see if the file got there
+and if it was queued for indexing.
+
 =head2 Options
 
 =over 4
