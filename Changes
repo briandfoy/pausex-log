@@ -1,1 +1,4 @@
 # Changes for PAUSEx::Log
+0.001_01 2025-01-26T20:43:37Z
+	* first release of my little program to tail the PAUSE log
+
