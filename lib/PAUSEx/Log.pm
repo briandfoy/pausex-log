@@ -47,7 +47,7 @@ PAUSEx::Log - Access the PAUSE log
 		my $entries = PAUSEx::Log->fetch_log();
 
 		MESSAGE: foreach my $entry ( $entries->@* ) {
-			next unless $entry->is_for_pauseid( 'BDFOY' );
+			next unless $entry->for_pause_id( 'BRIANDFOY' );
 			say $entry->message;
 			last FETCH if ...
 			}
@@ -151,7 +151,7 @@ The distribution name (Foo-Bar-1.23.tgz), if the message refers to one.
 Returns true if the log message is about PAUSE_ID.
 
 	foreach my $entry ( fetch()->@* ) {
-		next unless $entry->for_pause_id( 'BDFOY' );
+		next unless $entry->for_pause_id( 'BRIANDFOY' );
 		...
 		}
 
