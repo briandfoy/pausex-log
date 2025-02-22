@@ -9,6 +9,7 @@ MANIFEST.SKIP
 README.pod
 script/pause-log
 SECURITY.md
+t/categories.t
 t/load.t
 t/pod.t
 t/pod_coverage.t

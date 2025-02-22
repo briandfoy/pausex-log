@@ -138,6 +138,31 @@ sub can ($either, $method) {
 		}
 	}
 
+=item categories
+
+Returns a list of namespaces that represent log message types, such
+as C<PAUSEx::get>.
+
+=cut
+
+sub categories {
+	my $c = [ map { 'PAUSEx::Log::' . $_ } qw(
+		entered
+		enqueue
+		fetch
+		get
+		mldistwatch_start
+		reaped
+		received
+		renamed
+		verified
+		unknown
+		)
+		];
+
+	wantarray ? @$c : $c
+	}
+
 =item date
 
 (Common) The date of the log line, in YYYY-MM-DD
@@ -167,6 +192,46 @@ sub for_pause_id ( $self, $pause_id ) {
 
 (Common) A made up unique ID for the log message so you can tell if you've
 seen that log line before.
+
+=item is_enqueue
+
+=item is_entered
+
+=item is_fetch
+
+=item is_get
+
+=item is_mldistwatch_start
+
+=item is_reaped
+
+=item is_renamed
+
+=item is_received
+
+=item is_verified
+
+These return true if the log message could be classified as one of
+these types, and false otherwise. This happens through crude pattern
+matching.
+
+=item is_unknown
+
+Returns true is the message could not be classified, and false
+otherwise. This is the default type.
+
+=cut
+
+sub is_enqueue           { 0 }
+sub is_entered           { 0 }
+sub is_fetch             { 0 }
+sub is_get               { 0 }
+sub is_mldistwatch_start { 0 }
+sub is_reaped            { 0 }
+sub is_renamed           { 0 }
+sub is_received          { 0 }
+sub is_verified          { 0 }
+sub is_unknown           { 1 }
 
 =item level
 
@@ -271,16 +336,16 @@ sub _parse_message ( $class, $hash ) {
 
 
 BEGIN {
-package PAUSEx::Log::enqueue           { our @ISA = qw(PAUSEx::Log); sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::fetch             { our @ISA = qw(PAUSEx::Log); sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::get               { our @ISA = qw(PAUSEx::Log); sub names { qw(uri) }                           }
-package PAUSEx::Log::renamed           { our @ISA = qw(PAUSEx::Log); sub names { qw(tmp dest pause_id distname) }    }
-package PAUSEx::Log::received          { our @ISA = qw(PAUSEx::Log); sub names { qw(uri_id pause_id distname size) } }
-package PAUSEx::Log::entered           { our @ISA = qw(PAUSEx::Log); sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::verified          { our @ISA = qw(PAUSEx::Log); sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::mldistwatch_start { our @ISA = qw(PAUSEx::Log); sub names { qw(lpath pause_id distname pid) }   }
-package PAUSEx::Log::reaped            { our @ISA = qw(PAUSEx::Log); sub names { qw(pid) }                           }
-package PAUSEx::Log::unknown           { our @ISA = qw(PAUSEx::Log); sub names { qw() }                              }
+package PAUSEx::Log::entered           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_entered { 1 }           sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::enqueue           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_enqueue { 1 }           sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::fetch             { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_fetch { 1 }             sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::get               { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_get { 1 }               sub names { qw(uri) }                           }
+package PAUSEx::Log::mldistwatch_start { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_mldistwatch_start { 1 } sub names { qw(lpath pause_id distname pid) }   }
+package PAUSEx::Log::reaped            { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_reaped { 1 }            sub names { qw(pid) }                           }
+package PAUSEx::Log::received          { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_received { 1 }          sub names { qw(uri_id pause_id distname size) } }
+package PAUSEx::Log::renamed           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_renamed { 1 }           sub names { qw(tmp dest pause_id distname) }    }
+package PAUSEx::Log::verified          { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_verified { 1 }          sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::unknown           { our @ISA = qw(PAUSEx::Log); sub names { qw() } }
 }
 
 
