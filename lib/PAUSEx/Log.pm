@@ -92,16 +92,6 @@ sub fetch_log ( $class, $user = $ENV{CPAN_USER}, $pass = $ENV{CPAN_PASS} ) {
 		;
 	}
 
-sub _new ( $class, $hash, @values ) {
-	my @names = $class->names;
-	if( @names != @values ) {
-		croak "Names mismatch for: $hash->{message}\n  (@names) <- (@values)"
-		}
-
-	$hash->@{@names} = @values;
-
-	bless $hash, $class;
-	}
 
 =back
 
@@ -121,7 +111,7 @@ not all messages contain the PAUSE ID
 
 sub can ($either, $method) {
 	state $class_methods = {
-		map { $_, 1 } qw(new can parse_log_line parse_message)
+		map { $_, 1 } qw(_new can _parse_log_line _parse_message)
 		};
 	state $common_methods = {
 		map { $_, 1 } qw(date time huh version level message id type)
@@ -141,12 +131,12 @@ sub can ($either, $method) {
 =item categories
 
 Returns a list of namespaces that represent log message types, such
-as C<PAUSEx::get>.
+as C<PAUSEx::Log::Line::get>.
 
 =cut
 
 sub categories {
-	my $c = [ map { 'PAUSEx::Log::' . $_ } qw(
+	my $c = [ map { 'PAUSEx::Log::Line::' . $_ } qw(
 		entered
 		enqueue
 		fetch
@@ -162,6 +152,97 @@ sub categories {
 
 	wantarray ? @$c : $c
 	}
+
+=back
+
+=cut
+
+sub _parse_log_line ($class, $log_line) {
+	my( $date, $time, $pid, $paused, $level, $message )
+		= split /\s+/, $log_line, 6;
+
+	$pid =~ s/\D//g;
+
+	$paused =~ s/:\z//;
+	$level =~ s/:\z//; $level = lc($level);
+
+	my $paused_line;
+	if( $paused =~ /paused:(\d+)/ ) {
+		$paused_line = $1;
+		}
+
+	my %hash = (
+		date         => $date,
+		time         => $time,
+		pid          => $pid,
+		level        => $level,
+		paused_line  => $paused_line,
+		message      => $message,
+		id           => Digest::SHA1::sha1_hex($message),
+		raw          => $log_line,
+		);
+
+	PAUSEx::Log->_parse_message(\%hash),
+	}
+
+sub _parse_message ( $class, $hash ) {
+	local $_ = $hash->{message};
+
+	do {
+		state $uri_re = qr| (?<full_path>
+			(?<base_path> .+                )? /?
+			(?<first>                [A-Z]  ) /
+			(?<second>    \g{first}  [A-Z]  ) /
+			(?<pause_id>  \g{second} [A-Z]+ ) /
+			(?<distname>  [^/]+             )
+			)
+			|x;
+		state $dt = qr/\A\d\d:\d\d:\d\d\.\d{4}/a;
+
+		if( /\ANeed to get uriid\[$uri_re\]/ ) {
+			PAUSEx::Log::Line::enqueue->new( $hash, @+{qw(full_path pause_id distname)} );
+			}
+		elsif( /\AGoing to fetch uriid\[$uri_re\]/ ) {
+			PAUSEx::Log::Line::fetch->new( $hash, @+{qw(full_path pause_id distname)} );
+			}
+		elsif( /\ARequesting a GET on uri \[(.+)\]/ ) {
+			PAUSEx::Log::Line::get->new( $hash, $1 );
+			}
+		elsif( /\Arenamed '(.+?)' to '$uri_re'/ ) {
+			PAUSEx::Log::Line::renamed->new( $hash, $1, @+{qw(full_path pause_id distname)} );
+			}
+		elsif( /\AGot $uri_re \(size (?<size>\d+)\)/ ) {
+			PAUSEx::Log::Line::received->new( $hash, @+{qw(full_path pause_id distname size)} );
+			}
+		elsif( /\ASent 'has entered' email about uriid\[$uri_re\]/ ) {
+			PAUSEx::Log::Line::entered->new( $hash, @+{qw(full_path pause_id distname)} );
+			}
+		elsif( /\AVerified $uri_re/ ) {
+			PAUSEx::Log::Line::verified->new( $hash, @+{qw(full_path pause_id distname)} );
+			}
+		elsif( /\AStarted mldistwatch for lpath\[$uri_re\] with pid\[(?<pid>\d+)\]/ ) {
+			PAUSEx::Log::Line::mldistwatch_start->new( $hash, @+{qw(full_path pause_id distname pid)} );
+			}
+		elsif( /\AReaped child\[(\d+)\]/ ) {
+			PAUSEx::Log::Line::reaped->new( $hash, $1 );
+			}
+		else {
+			PAUSEx::Log::unknown->_new( $hash );
+			}
+		};
+	}
+
+
+=head2 Log line type
+
+Each log line is parsed and assigned a category, where that category
+can be a catch-all "unknown" category. The result of C<fetch_log> (as
+in the L</SYNOPSIS>) is a list of log line objects. These objects
+share some common methods, then have additional methods as appropriate.
+
+=head3 Log line methods
+
+=over 4
 
 =item date
 
@@ -179,14 +260,6 @@ Returns true if the log message is about PAUSE_ID.
 		next unless $entry->for_pause_id( 'BRIANDFOY' );
 		...
 		}
-
-=cut
-
-sub for_pause_id ( $self, $pause_id ) {
-	return unless defined $pause_id;
-	return unless $self->can('pause_id');
-	return $self->pause_id eq uc $pause_id;
-	}
 
 =item id
 
@@ -220,19 +293,6 @@ matching.
 Returns true is the message could not be classified, and false
 otherwise. This is the default type.
 
-=cut
-
-sub is_enqueue           { 0 }
-sub is_entered           { 0 }
-sub is_fetch             { 0 }
-sub is_get               { 0 }
-sub is_mldistwatch_start { 0 }
-sub is_reaped            { 0 }
-sub is_renamed           { 0 }
-sub is_received          { 0 }
-sub is_verified          { 0 }
-sub is_unknown           { 1 }
-
 =item level
 
 (Common) The log level
@@ -255,97 +315,57 @@ The PAUSE ID of the message, if the message refers to one
 
 =cut
 
-sub type ( $self ) {
-	use experimental(qw(builtin));
-	builtin::blessed($self) =~ s/.*:://r;
-	}
+BEGIN {
+package PAUSEx::Log::Line {
+    use Carp qw(croak);
 
-sub _parse_log_line ($class, $log_line) {
-	# No idea what $huh represents
-	my( $date, $time, $huh, $version, $level, $message )
-		= split /\s+/, $log_line, 6;
+	sub new ( $class, $hash, @values ) {
+		my @names = $class->names;
+		if( @names != @values ) {
+			croak "Names mismatch for: $hash->{message}\n  (@names) <- (@values)"
+			}
 
-	$version =~ s/:\z//;
-	$level =~ s/:\z//; $level = lc($level);
+		$hash->@{@names} = @values;
 
-	my $paused_line;
-	if( $message =~ s/\s+\(paused:(\d+)\)\z// ) {
-		$paused_line = $1;
+		bless $hash, $class;
 		}
 
-	my %hash = (
-		date         => $date,
-		time         => $time,
-		huh          => $huh,
-		version      => $version,
-		level        => $level,
-		paused_line  => $paused_line,
-		message      => $message,
-		id           => Digest::SHA1::sha1_hex($message),
-		);
+	sub pause_id { () }
 
-	PAUSEx::Log->_parse_message(\%hash),
+	sub for_pause_id ( $self, $pause_id ) {
+		return unless defined $pause_id;
+		return unless $self->can('pause_id');
+		return $self->pause_id eq uc $pause_id;
+		}
+
+	sub is_enqueue           { 0 }
+	sub is_entered           { 0 }
+	sub is_fetch             { 0 }
+	sub is_get               { 0 }
+	sub is_mldistwatch_start { 0 }
+	sub is_reaped            { 0 }
+	sub is_renamed           { 0 }
+	sub is_received          { 0 }
+	sub is_verified          { 0 }
+	sub is_unknown           { 1 }
+
+	sub type ( $self ) {
+		use experimental(qw(builtin));
+		builtin::blessed($self) =~ s/.*:://r;
+		}
+
 	}
 
-sub _parse_message ( $class, $hash ) {
-	local $_ = $hash->{message};
-
-	do {
-		state $uri_re = qr| (?<full_path>
-			(?<base_path> .+                )? /?
-			(?<first>                [A-Z]  ) /
-			(?<second>    \g{first}  [A-Z]  ) /
-			(?<pause_id>  \g{second} [A-Z]+ ) /
-			(?<distname>  [^/]+             )
-			)
-			|x;
-
-		if( /\ANeed to get uriid\[$uri_re\]/ ) {
-			PAUSEx::Log::enqueue->_new( $hash, @+{qw(full_path pause_id distname)} );
-			}
-		elsif( /\AGoing to fetch uriid\[$uri_re\]/ ) {
-			PAUSEx::Log::fetch->_new( $hash, @+{qw(full_path pause_id distname)} );
-			}
-		elsif( /\ARequesting a GET on uri \[(.+)\]/ ) {
-			PAUSEx::Log::get->_new( $hash, $1 );
-			}
-		elsif( /\Arenamed '(.+?)' to '$uri_re'/ ) {
-			PAUSEx::Log::renamed->_new( $hash, $1, @+{qw(full_path pause_id distname)} );
-			}
-		elsif( /\AGot $uri_re \(size (?<size>\d+)\)/ ) {
-			PAUSEx::Log::received->_new( $hash, @+{qw(full_path pause_id distname size)} );
-			}
-		elsif( /\ASent 'has entered' email about uriid\[$uri_re\]/ ) {
-			PAUSEx::Log::entered->_new( $hash, @+{qw(full_path pause_id distname)} );
-			}
-		elsif( /\AVerified $uri_re/ ) {
-			PAUSEx::Log::verified->_new( $hash, @+{qw(full_path pause_id distname)} );
-			}
-		elsif( /\AStarted mldistwatch for lpath\[$uri_re\] with pid\[(?<pid>\d+)\]/ ) {
-			PAUSEx::Log::mldistwatch_start->_new( $hash, @+{qw(full_path pause_id distname pid)} );
-			}
-		elsif( /\AReaped child\[(\d+)\]/ ) {
-			PAUSEx::Log::reaped->_new( $hash, $1 );
-			}
-		else {
-			PAUSEx::Log::unknown->_new( $hash );
-			}
-		};
-	}
-
-
-
-BEGIN {
-package PAUSEx::Log::entered           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_entered { 1 }           sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::enqueue           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_enqueue { 1 }           sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::fetch             { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_fetch { 1 }             sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::get               { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_get { 1 }               sub names { qw(uri) }                           }
-package PAUSEx::Log::mldistwatch_start { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_mldistwatch_start { 1 } sub names { qw(lpath pause_id distname pid) }   }
-package PAUSEx::Log::reaped            { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_reaped { 1 }            sub names { qw(pid) }                           }
-package PAUSEx::Log::received          { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_received { 1 }          sub names { qw(uri_id pause_id distname size) } }
-package PAUSEx::Log::renamed           { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_renamed { 1 }           sub names { qw(tmp dest pause_id distname) }    }
-package PAUSEx::Log::verified          { our @ISA = qw(PAUSEx::Log); sub is_unknown { 0 } sub is_verified { 1 }          sub names { qw(uri_id pause_id distname) }      }
-package PAUSEx::Log::unknown           { our @ISA = qw(PAUSEx::Log); sub names { qw() } }
+package PAUSEx::Log::Line::entered           { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_entered { 1 }           sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::Line::enqueue           { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_enqueue { 1 }           sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::Line::fetch             { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_fetch { 1 }             sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::Line::get               { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_get { 1 }               sub names { qw(uri) }                           }
+package PAUSEx::Log::Line::mldistwatch_start { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_mldistwatch_start { 1 } sub names { qw(lpath pause_id distname pid) }   }
+package PAUSEx::Log::Line::reaped            { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_reaped { 1 }            sub names { qw(pid) }                           }
+package PAUSEx::Log::Line::received          { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_received { 1 }          sub names { qw(uri_id pause_id distname size) } }
+package PAUSEx::Log::Line::renamed           { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_renamed { 1 }           sub names { qw(tmp dest pause_id distname) }    }
+package PAUSEx::Log::Line::verified          { our @ISA = qw(PAUSEx::Log::Line); sub is_unknown { 0 } sub is_verified { 1 }          sub names { qw(uri_id pause_id distname) }      }
+package PAUSEx::Log::Line::unknown           { our @ISA = qw(PAUSEx::Log::Line); sub names { qw() } }
 }
 
 
