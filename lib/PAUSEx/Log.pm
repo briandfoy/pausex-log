@@ -376,7 +376,6 @@ package PAUSEx::Log::Line::unknown           { our @ISA = qw(PAUSEx::Log::Line);
 
 =head1 SEE ALSO
 
-
 =head1 SOURCE AVAILABILITY
 
 This source is in Github:
