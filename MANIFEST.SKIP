@@ -95,3 +95,6 @@ nytprof
 cooker_report.txt
 
 .downstream.json
+
+.downstream.json
+cpan_tester_reports
