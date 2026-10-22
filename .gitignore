@@ -35,3 +35,4 @@ inc/
 /*.zip
 *.bak
 cooker_report.txt
+.claude/
